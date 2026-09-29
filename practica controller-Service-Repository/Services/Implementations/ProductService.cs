@@ -1,18 +1,22 @@
-﻿using practica_controller_Service_Repository.Models.DTOS.Responses;
+﻿using practica_controller_Service_Repository.Entities;
+using practica_controller_Service_Repository.Models.DTOS.Requests;
+using practica_controller_Service_Repository.Models.DTOS.Responses;
 using practica_controller_Service_Repository.Repositories.Implementations;
+using practica_controller_Service_Repository.Repositories.interfaces;
+using practica_controller_Service_Repository.Services.Interfaces;
+using PracticaIntegrada.Entities;
 
 namespace practica_controller_Service_.Services.Implementations;
 
-public class IProductService
+public class ProductService : IProductService
 {
     private ProductRepository _repository = new ProductRepository();
 
     public List GetAllProducts()
     {
-        return _repository.GetAllProduct()
+        return _repository.GetAllProducts()
             .Select(p => new ProductForReadDto { Id = p.Id, Name = p.Name, Price = p.Price })
             .ToList();
-
     }
 
     public ProductForReadDto? GetProductById(int id)
@@ -23,17 +27,35 @@ public class IProductService
         return new ProductForReadDto { Id = product.Id, Name = product.Name, Price = product.Price };
     }
 
-    public ProductForReadDto CreateProduct(ProductForReadDto dto)
+    public ProductForReadDto CreateProduct(ProductForCreateDto dto)
     {
-        var product = new ProductForReadDto { Name = dto.Name, Price = dto.Price };
+        bool nameExists = _repository.GetAllProducts()
+            .Any(p => p.Name.Equals(dto.Name, StringComparison.OrdinalIgnoreCase));
+
+        if (nameExists)
+        {
+            throw new InvalidOperationException("Ya existe un producto con el mismo nombre.");
+        }
+
+        var product = new Product
+        {
+            Name = dto.Name,
+            Price = dto.Price
+        };
+
         _repository.AddProduct(product);
 
-        return new ProductForReadDto { Id = product.Id, Name = product.Name, Price = product.Price };
+        return new ProductForReadDto
+        {
+            Id = product.Id,
+            Name = product.Name,
+            Price = product.Price
+        };
     }
 
-    public void UpdateProduct(int id, ProductForReadDto dto)
+    public void UpdateProduct(int id, ProductForUpdateDto dto)
     {
-        var product = new ProductForReadDto { Id = id, Name = dto.Name, Price= dto.Price };
+        var product = new Product { Id = id, Name = dto.Name, Price = dto.Price };
         _repository.UpdateProduct(product);
     }
 
@@ -48,7 +70,7 @@ public class IProductService
 
     public List SearchProductByName(string name)
     {
-        return _repository.SearchProductByName(name)
+        return _repository.SearchProductsByName(name)
             .Select(p => new ProductForReadDto { Id = p.Id, Name = p.Name, Price = p.Price })
             .ToList();
     }
@@ -68,5 +90,4 @@ public class IProductService
             MostExpensiveName = products.OrderByDescending(p => p.Price).First().Name
         };
     }
-
 }
