@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace practica_controller_Service_Repository.Models.DTOS.Requests;
 
-namespace practica_controller_Service_Repository.Models.DTOs.Requests
+public class ProductForUpdateDto
 {
-    internal class ProductForUpdateDto
-    {
-    }
+    public string Nmae { get; set; } = string.Empty;
+    public decimal Price { get; set; }
 }
