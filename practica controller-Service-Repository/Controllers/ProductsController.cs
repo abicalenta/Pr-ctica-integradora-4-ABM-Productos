@@ -1,14 +1,20 @@
-﻿using practica_controller_Service_.Services.Implementations;
+﻿using Microsoft.AspNetCore.Mvc;
 using practica_controller_Service_Repository.Models.DTOS.Requests;
+using practica_controller_Service_Repository.Services.Interfaces;
 
-namespace practica_controller_Service_Repository.Controllers
+namespace practica_controller_Service_Repository.Controllers;
 
 [ApiController]
-[Route("api/[controller])")]
-
+[Route("api/[controller]")]
 public class ProductsController : ControllerBase
 {
-    private IProductService _service = new IProductService();
+    private readonly IProductService _service;
+
+    public ProductsController(IProductService service)
+    {
+        _service = service;
+    }
+
     [HttpGet]
     public IActionResult GetAll()
     {
@@ -26,8 +32,15 @@ public class ProductsController : ControllerBase
     [HttpPost]
     public IActionResult Create([FromBody] ProductForCreateDto dto)
     {
-        var createdProduct = _service.CreateProduct(dto);
-        return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, createdProduct);
+        try
+        {
+            var createdProduct = _service.CreateProduct(dto);
+            return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, createdProduct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
@@ -48,5 +61,12 @@ public class ProductsController : ControllerBase
 
         _service.DeleteProduct(id);
         return NoContent();
+    }
+
+
+    [HttpGet("stats")]
+    public IActionResult GetStats()
+    {
+        return Ok(_service.GetStats());
     }
 }
