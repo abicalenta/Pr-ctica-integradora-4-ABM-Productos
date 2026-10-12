@@ -1,72 +1,93 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using practica_controller_Service_Repository.Models.DTOS.Requests;
+using practica_controller_Service_Repository.Models.DTOS.Responses;
 using practica_controller_Service_Repository.Services.Interfaces;
 
-namespace practica_controller_Service_Repository.Controllers;
 
-[ApiController]
-[Route("api/[controller]")]
-public class ProductsController : ControllerBase
+namespace practica_controller_Service_Repository.Controllers
 {
-    private readonly IProductService _service;
-
-    public ProductsController(IProductService service)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ProductsController : ControllerBase
     {
-        _service = service;
-    }
+        private readonly IProductService _service;
 
-    [HttpGet]
-    public IActionResult GetAll()
-    {
-        return Ok(_service.GetAllProducts());
-    }
-
-    [HttpGet("{id}")]
-    public IActionResult GetById(int id)
-    {
-        var product = _service.GetProductById(id);
-        if (product == null) return NotFound();
-        return Ok(product);
-    }
-
-    [HttpPost]
-    public IActionResult Create([FromBody] ProductForCreateDto dto)
-    {
-        try
+        public ProductsController(IProductService service)
         {
+            _service = service;
+        }
+
+        [HttpGet]
+        public ActionResult<List<ProductForReadDto>> GetAll()
+        {
+            return Ok(_service.GetAllProducts());
+        }
+
+        [HttpGet("{id}")]
+        public ActionResult<ProductForReadDto> GetById(int id)
+        {
+            var product = _service.GetProductById(id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+            return Ok(product);
+        }
+
+        [HttpPost]
+        public ActionResult<ProductForReadDto> Create(ProductForCreateDto dto)
+        {
+            if (_service.ExistsByName(dto.Name))
+            {
+                return Conflict($"Ya existe un producto con el nombre '{dto.Name}'.");
+            }
+
             var createdProduct = _service.CreateProduct(dto);
             return CreatedAtAction(nameof(GetById), new { id = createdProduct.Id }, createdProduct);
         }
-        catch (InvalidOperationException ex)
+
+        [HttpPut("{id}")]
+        public IActionResult Update(int id, ProductForUpdateDto dto)
         {
-            return Conflict(new { message = ex.Message });
+            var existingProduct = _service.GetProductById(id);
+            if (existingProduct == null)
+            {
+                return NotFound();
+            }
+
+            if (_service.ExistsByName(dto.Name, excludeId: id))
+            {
+                return Conflict($"Ya existe un producto con el nombre '{dto.Name}'.");
+            }
+
+            _service.UpdateProduct(id, dto);
+            return NoContent();
         }
-    }
 
-    [HttpPut("{id}")]
-    public IActionResult Update(int id, [FromBody] ProductForUpdateDto dto)
-    {
-        var existing = _service.GetProductById(id);
-        if (existing == null) return NotFound();
+        [HttpDelete("{id}")]
+        public IActionResult Delete(int id)
+        {
+            var existingProduct = _service.GetProductById(id);
+            if (existingProduct == null)
+            {
+                return NotFound();
+            }
 
-        _service.UpdateProduct(id, dto);
-        return NoContent();
-    }
+            _service.DeleteProduct(id);
+            return NoContent();
+        }
 
-    [HttpDelete("{id}")]
-    public IActionResult Delete(int id)
-    {
-        var existing = _service.GetProductById(id);
-        if (existing == null) return NotFound();
+        [HttpGet("search")]
+        public ActionResult<List<ProductForReadDto>> Search([FromQuery] string name)
+        {
+            var results = _service.SearchProductsByName(name ?? string.Empty);
+            return Ok(results);
+        }
 
-        _service.DeleteProduct(id);
-        return NoContent();
-    }
-
-
-    [HttpGet("stats")]
-    public IActionResult GetStats()
-    {
-        return Ok(_service.GetStats());
+        [HttpGet("stats")]
+        public ActionResult<ProductStatsDto> GetStats()
+        {
+            return Ok(_service.GetStats());
+        }
     }
 }

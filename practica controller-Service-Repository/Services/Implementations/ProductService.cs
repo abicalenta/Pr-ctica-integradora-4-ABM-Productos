@@ -1,54 +1,111 @@
 ﻿using practica_controller_Service_Repository.Entities;
-using practica_controller_Service_Repository.Repositories.interfaces;
-using PracticaIntegrada.Entities;
+using practica_controller_Service_Repository.Models.DTOS.Requests;
+using practica_controller_Service_Repository.Models.DTOS.Responses;
+using practica_controller_Service_Repository.Repositories.Interfaces;
+using practica_controller_Service_Repository.Services.Interfaces;
+using TuProyecto.Models.DTOs.Requests;
+using TuProyecto.Models.DTOs.Responses;
 
-namespace practica_controller_Service_Repository.Repositories.Implementations;
-
-public class ProductRepository : IProductRepository
+namespace practica_controller_Service_Repository.Services.Implementations
 {
-    private static List _products = new()
+    public class ProductService : IProductService
     {
-        new Product { Id = 1, Name = "Mouse inalámbrico", Price = 3999.99m },
-        new Product { Id = 2, Name = "Teclado mecánico", Price = 8299.50m },
-        new Product { Id = 3, Name = "Monitor 24 pulgadas", Price = 52499.00m },
-        new Product { Id = 4, Name = "Notebook Dell Inspiron", Price = 185000.00m },
-        new Product { Id = 5, Name = "Auriculares Bluetooth", Price = 10499.90m },
-        new Product { Id = 6, Name = "Webcam HD", Price = 7999.00m },
-        new Product { Id = 7, Name = "Silla ergonómica", Price = 61200.00m },
-        new Product { Id = 8, Name = "Disco SSD 1TB", Price = 44999.99m },
-        new Product { Id = 9, Name = "Tablet Samsung Galaxy", Price = 93499.00m },
-        new Product { Id = 10, Name = "Impresora multifunción", Price = 73900.00m }
-    };
+        private readonly IProductRepository _repository;
 
-    public List GetAllProducts() => _products;
-
-    public Product? GetProductById(int id) => _products.FirstOrDefault(p => p.Id == id);
-
-    public void AddProduct(Product product)
-    {
-        product.Id = _products.Count > 0 ? _products.Max(p => p.Id) + 1 : 1;
-        _products.Add(product);
-    }
-
-    public void UpdateProduct(Product product)
-    {
-        var existing = GetProductById(product.Id);
-        if (existing != null)
+        public ProductService(IProductRepository repository)
         {
-            existing.Name = product.Name;
-            existing.Price = product.Price;
+            _repository = repository;
         }
-    }
 
-    public void DeleteProduct(Product product)
-    {
-        _products.Remove(product);
-    }
+        public List<ProductForReadDto> GetAllProducts()
+        {
+            return _repository.GetAllProducts()
+                .Select(p => MapToReadDto(p))
+                .ToList();
+        }
 
-    public List SearchProductsByName(string name)
-    {
-        return _products
-            .Where(p => p.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        public ProductForReadDto? GetProductById(int id)
+        {
+            var product = _repository.GetProductById(id);
+            return product == null ? null : MapToReadDto(product);
+        }
+
+        public ProductForReadDto CreateProduct(ProductForCreateDto dto)
+        {
+            var entity = new Product
+            {
+                Name = dto.Name,
+                Price = dto.Price
+            };
+
+            var createdProduct = _repository.AddProduct(entity);
+            return MapToReadDto(createdProduct);
+        }
+
+        public void UpdateProduct(int id, ProductForUpdateDto dto)
+        {
+            var entity = _repository.GetProductById(id);
+            if (entity != null)
+            {
+                entity.Name = dto.Name;
+                entity.Price = dto.Price;
+                _repository.UpdateProduct(entity);
+            }
+        }
+
+        public void DeleteProduct(int id)
+        {
+            var entity = _repository.GetProductById(id);
+            if (entity != null)
+            {
+                _repository.DeleteProduct(entity);
+            }
+        }
+
+        public List<ProductForReadDto> SearchProductsByName(string name)
+        {
+            return _repository.SearchProductsByName(name)
+                .Select(p => MapToReadDto(p))
+                .ToList();
+        }
+
+        public ProductStatsDto GetStats()
+        {
+            var products = _repository.GetAllProducts();
+
+            if (!products.Any())
+            {
+                return new ProductStatsDto
+                {
+                    Total = 0,
+                    AveragePrice = 0,
+                    MostExpensiveName = string.Empty
+                };
+            }
+
+            return new ProductStatsDto
+            {
+                Total = products.Count,
+                AveragePrice = products.Average(p => p.Price),
+                MostExpensiveName = products.OrderByDescending(p => p.Price).FirstOrDefault()?.Name ?? string.Empty
+            };
+        }
+
+        public bool ExistsByName(string name, int? excludeId = null)
+        {
+            return _repository.GetAllProducts().Any(p =>
+                p.Name.Equals(name, StringComparison.OrdinalIgnoreCase) &&
+                (!excludeId.HasValue || p.Id != excludeId.Value));
+        }
+
+        private static ProductForReadDto MapToReadDto(Product product)
+        {
+            return new ProductForReadDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                Price = product.Price
+            };
+        }
     }
 }

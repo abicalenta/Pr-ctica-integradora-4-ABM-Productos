@@ -1,8 +1,9 @@
-﻿namespace practica_controller_Service_Repository.Models.DTOS.Responses;
-
-public class ProductStatusDto
+﻿namespace TuProyecto.Models.DTOs.Responses
 {
-    public int Total { get; set; }
-    public decimal AveragePrice { get; set; }
-    public string MostExpensiveName { get; set; } = string.Empty;
+    public class ProductForReadDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+    }
 }
